@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAyODgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiB2aWV3Qm94PSIwIDAgMjQgMjQiPiA8cGF0aCBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIHN0cm9rZS13aWR0aD0iMiIgZD0iTTE3IDIwaDVWNWEyIDMgMCAwMC01LjM1Ni0xLjg1N00xNyAyMEg3bTEwIDAtMmMwLS42NTYuMTI2LTEuMjgzLjM1Ni0xLjg1N003IDIwSDJ2LTJhMyAzIDAgMDE1LjM1Ni0xLjg1N003IDIwdi0yYzAtLjY1Ni4xMjYtMS4yODMuMzU2LTEuODU3bTAgMGE1LjAwMiA1LjAwMiAwIDAxOS4yODggME0xNSA3YTMgMyAwIDExLTYgMCAzIDMgMCAwMTYgMHptNiAzYTIgMiAwIDExLTQgMCAyIDIgMCAwMTQgMHpNNyAxMGEyIDIgMCAxMS00IDAgMiAyIDAgMDE0IDB6Ii8+PC9zdmc+">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         .fade-in {
             animation: fadeIn 0.3s ease-in;
@@ -95,6 +95,10 @@
                     <h1 class="text-xl md:text-3xl font-bold text-gray-900">বাসা ভাড়া ব্যবস্থাপনা</h1>
                 </div>
                 <div class="flex space-x-2 md:space-x-3">
+                    <div id="connectionStatus" class="px-3 py-2 rounded-lg text-sm font-semibold mr-2">
+                        <span id="statusIcon">🔄</span>
+                        <span id="statusText">চেক করছি...</span>
+                    </div>
                     <button id="installBtn" class="bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 rounded-lg font-semibold transition-colors duration-200 shadow-md hidden touch-friendly text-sm md:text-base">
                         📱 <span class="hidden sm:inline">অ্যাপ ইনস্টল করুন</span><span class="sm:hidden">ইনস্টল</span>
                     </button>
@@ -164,6 +168,53 @@
                         <p id="currentMonthPaid" class="text-lg md:text-2xl font-bold text-gray-900">০</p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Firebase Debug Panel -->
+        <div id="debugPanel" class="bg-gray-900 text-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">🔧 Firebase Debug Panel</h2>
+                <button onclick="document.getElementById('debugPanel').style.display='none'" class="text-gray-400 hover:text-white">
+                    ✕ বন্ধ করুন
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h3 class="font-semibold mb-2">📊 Connection Status</h3>
+                    <p id="debugStatus" class="text-sm">Checking...</p>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h3 class="font-semibold mb-2">🔗 Database URL</h3>
+                    <p id="debugURL" class="text-sm break-all">Not set</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-800 p-4 rounded-lg mb-4">
+                <h3 class="font-semibold mb-2">⚙️ Config Check</h3>
+                <div id="configCheck" class="text-sm space-y-1">
+                    <p>Checking configuration...</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h3 class="font-semibold mb-2">📝 Console Logs</h3>
+                <div id="debugLogs" class="text-xs bg-black p-3 rounded max-h-40 overflow-y-auto font-mono">
+                    <p>Logs will appear here...</p>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex space-x-2">
+                <button onclick="testFirebaseConnection()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm">
+                    🔄 Reconnect Firebase
+                </button>
+                <button onclick="clearDebugLogs()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm">
+                    🗑️ Clear Logs
+                </button>
+                <button onclick="exportDebugInfo()" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm">
+                    📋 Export Debug Info
+                </button>
             </div>
         </div>
 
@@ -370,44 +421,259 @@
     </div>
 
     <script>
-        // Firebase Configuration - GitHub Pages এর জন্য অপ্টিমাইজড
+        // 🔥 Firebase Configuration - সংযুক্ত এবং প্রস্তুত!
         const firebaseConfig = {
-            // 🔥 Firebase Console থেকে পাওয়া config এখানে বসান
-            // Console → Project Settings → General → Your apps → Web app → Config
-            
-            // ⚠️ নিচের ভ্যালুগুলো আপনার Firebase Console থেকে কপি করে বসান:
-            apiKey: "AIzaSyC_your_actual_api_key_here",
-            authDomain: "your-project-id.firebaseapp.com", 
-            projectId: "your-project-id",
-            storageBucket: "your-project-id.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abcdef123456"
-            
-            // 📝 উদাহরণ: যদি আপনার প্রজেক্ট ID হয় "basha-vara-management-12345" তাহলে:
-            // apiKey: "AIzaSyBdVla0_example_key_here",
-            // authDomain: "basha-vara-management-12345.firebaseapp.com",
-            // projectId: "basha-vara-management-12345",
-            // storageBucket: "basha-vara-management-12345.appspot.com",
-            // messagingSenderId: "987654321098",
-            // appId: "1:987654321098:web:example123456"
+            apiKey: "AIzaSyBa6Gz77UfMN4X8WKAZC1a7cjjHNduEYJo",
+            authDomain: "basha-vara-management.firebaseapp.com",
+            databaseURL: "https://basha-vara-management-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "basha-vara-management",
+            storageBucket: "basha-vara-management.firebasestorage.app",
+            messagingSenderId: "48581538420",
+            appId: "1:48581538420:web:db1de7d97ba68983fe1721",
+            measurementId: "G-SL2TYRTB74"
         };
 
-        // 📝 নোট: Firebase ছাড়াই সম্পূর্ণ কার্যকর! ডেটা localStorage এ সংরক্ষিত হবে
-        // Production এ Firebase ব্যবহার করতে চাইলে উপরের config আপডেট করুন
+        // 🚨 গুরুত্বপূর্ণ: উপরের সব "YOUR_" দিয়ে শুরু হওয়া অংশগুলো আপনার আসল তথ্য দিয়ে পরিবর্তন করুন!
 
-        // Initialize Firebase (Demo mode - using localStorage for persistence)
-        let db;
+        // Initialize Firebase Realtime Database
+        let database;
         let isFirebaseConnected = false;
+        let connectionStatus = 'checking';
 
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            isFirebaseConnected = true;
-            console.log('Firebase connected successfully');
-        } catch (error) {
-            console.log('Firebase not configured, using demo mode with localStorage');
-            isFirebaseConnected = false;
+        // Firebase Connection Test Function
+        function testFirebaseConnection() {
+            console.log('🔥 Firebase Connection Test Started...');
+            console.log('Config:', firebaseConfig);
+            
+            // Check if config is properly set
+            if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+                console.log('❌ Firebase config not updated - using demo mode');
+                connectionStatus = 'demo';
+                updateConnectionStatus('demo');
+                return false;
+            }
+            
+            try {
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+                
+                // Test connection with a simple read
+                database.ref('.info/connected').on('value', function(snapshot) {
+                    if (snapshot.val() === true) {
+                        console.log('✅ Firebase Realtime Database connected successfully!');
+                        isFirebaseConnected = true;
+                        connectionStatus = 'connected';
+                        updateConnectionStatus('connected');
+                        showNotification('🔥 Firebase সংযুক্ত হয়েছে!', 'success');
+                        
+                        // Load data from Firebase
+                        loadFirebaseData();
+                    } else {
+                        console.log('❌ Firebase connection lost');
+                        isFirebaseConnected = false;
+                        connectionStatus = 'disconnected';
+                        updateConnectionStatus('disconnected');
+                        showNotification('⚠️ Firebase সংযোগ বিচ্ছিন্ন - Demo mode এ চলছে', 'error');
+                    }
+                });
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Firebase initialization error:', error);
+                console.log('Error details:', error.message);
+                isFirebaseConnected = false;
+                connectionStatus = 'error';
+                updateConnectionStatus('error');
+                showNotification(`Firebase Error: ${error.message}`, 'error');
+                return false;
+            }
         }
+
+        // Load initial Firebase data
+        async function loadFirebaseData() {
+            if (!isFirebaseConnected) return;
+            
+            try {
+                console.log('📥 Loading data from Firebase...');
+                const snapshot = await database.ref('tenants').once('value');
+                const firebaseData = snapshot.val();
+                
+                if (firebaseData) {
+                    console.log('✅ Firebase data loaded:', firebaseData);
+                    // Convert Firebase data to local format
+                    const firebaseTenants = Object.keys(firebaseData).map(key => ({
+                        id: key,
+                        ...firebaseData[key],
+                        paymentHistory: firebaseData[key].paymentHistory ? 
+                            Object.values(firebaseData[key].paymentHistory) : []
+                    }));
+                    
+                    // Update local storage as backup
+                    localStorage.setItem('demoTenants', JSON.stringify(firebaseTenants));
+                    demoTenants = firebaseTenants;
+                    
+                    // Refresh UI
+                    loadTenants();
+                    updateDashboardStats();
+                    updateMonthlyStatus();
+                    updateOutstandingList();
+                    
+                    showNotification(`✅ ${firebaseTenants.length}টি ভাড়াটিয়ার ডেটা লোড হয়েছে!`, 'success');
+                } else {
+                    console.log('📝 No data in Firebase, using demo data');
+                    showNotification('Firebase এ কোনো ডেটা নেই - Demo data ব্যবহার করছি', 'info');
+                }
+            } catch (error) {
+                console.error('❌ Error loading Firebase data:', error);
+                showNotification('Firebase থেকে ডেটা লোড করতে সমস্যা হয়েছে', 'error');
+            }
+        }
+
+        // Update connection status display
+        function updateConnectionStatus(status, message) {
+            const statusElement = document.getElementById('connectionStatus');
+            const iconElement = document.getElementById('statusIcon');
+            const textElement = document.getElementById('statusText');
+            
+            if (!statusElement) return;
+            
+            switch(status) {
+                case 'connected':
+                    statusElement.className = 'px-3 py-2 rounded-lg text-sm font-semibold mr-2 bg-green-100 text-green-800';
+                    iconElement.textContent = '🔥';
+                    textElement.textContent = 'Firebase';
+                    break;
+                case 'demo':
+                    statusElement.className = 'px-3 py-2 rounded-lg text-sm font-semibold mr-2 bg-yellow-100 text-yellow-800';
+                    iconElement.textContent = '💾';
+                    textElement.textContent = 'Demo';
+                    break;
+                case 'error':
+                    statusElement.className = 'px-3 py-2 rounded-lg text-sm font-semibold mr-2 bg-red-100 text-red-800';
+                    iconElement.textContent = '❌';
+                    textElement.textContent = 'Error';
+                    break;
+                case 'disconnected':
+                    statusElement.className = 'px-3 py-2 rounded-lg text-sm font-semibold mr-2 bg-orange-100 text-orange-800';
+                    iconElement.textContent = '📡';
+                    textElement.textContent = 'Offline';
+                    break;
+                default:
+                    statusElement.className = 'px-3 py-2 rounded-lg text-sm font-semibold mr-2 bg-gray-100 text-gray-800';
+                    iconElement.textContent = '🔄';
+                    textElement.textContent = 'চেক করছি...';
+            }
+        }
+
+        // Initialize Firebase
+        const firebaseInitialized = testFirebaseConnection();
+        
+        // Debug functions
+        let debugLogs = [];
+        
+        function addDebugLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            debugLogs.push(logEntry);
+            
+            const debugLogsElement = document.getElementById('debugLogs');
+            if (debugLogsElement) {
+                debugLogsElement.innerHTML = debugLogs.slice(-20).map(log => `<p>${log}</p>`).join('');
+                debugLogsElement.scrollTop = debugLogsElement.scrollHeight;
+            }
+            
+            console.log(logEntry);
+        }
+        
+        function clearDebugLogs() {
+            debugLogs = [];
+            const debugLogsElement = document.getElementById('debugLogs');
+            if (debugLogsElement) {
+                debugLogsElement.innerHTML = '<p>Logs cleared...</p>';
+            }
+        }
+        
+        function exportDebugInfo() {
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                connectionStatus: connectionStatus,
+                isFirebaseConnected: isFirebaseConnected,
+                config: {
+                    ...firebaseConfig,
+                    apiKey: firebaseConfig.apiKey.substring(0, 10) + '...' // Hide full API key
+                },
+                logs: debugLogs,
+                tenantCount: demoTenants.length,
+                userAgent: navigator.userAgent
+            };
+            
+            const blob = new Blob([JSON.stringify(debugInfo, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `firebase-debug-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function updateDebugPanel() {
+            // Update debug status
+            const debugStatusElement = document.getElementById('debugStatus');
+            if (debugStatusElement) {
+                debugStatusElement.innerHTML = `
+                    Status: <span class="font-bold">${connectionStatus}</span><br>
+                    Connected: <span class="font-bold">${isFirebaseConnected ? 'Yes' : 'No'}</span><br>
+                    Tenants: <span class="font-bold">${demoTenants.length}</span>
+                `;
+            }
+            
+            // Update database URL
+            const debugURLElement = document.getElementById('debugURL');
+            if (debugURLElement) {
+                debugURLElement.textContent = firebaseConfig.databaseURL || 'Not configured';
+            }
+            
+            // Update config check
+            const configCheckElement = document.getElementById('configCheck');
+            if (configCheckElement) {
+                const checks = [
+                    { name: 'API Key', value: firebaseConfig.apiKey, valid: firebaseConfig.apiKey !== "YOUR_API_KEY_HERE" },
+                    { name: 'Auth Domain', value: firebaseConfig.authDomain, valid: !firebaseConfig.authDomain.includes('YOUR_PROJECT_ID') },
+                    { name: 'Database URL', value: firebaseConfig.databaseURL, valid: !firebaseConfig.databaseURL.includes('YOUR_PROJECT_ID') },
+                    { name: 'Project ID', value: firebaseConfig.projectId, valid: firebaseConfig.projectId !== "YOUR_PROJECT_ID" }
+                ];
+                
+                configCheckElement.innerHTML = checks.map(check => `
+                    <p>
+                        ${check.valid ? '✅' : '❌'} ${check.name}: 
+                        <span class="font-mono text-xs">${check.value.substring(0, 30)}${check.value.length > 30 ? '...' : ''}</span>
+                    </p>
+                `).join('');
+            }
+        }
+
+        // Override console.log to capture logs
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = function(...args) {
+            addDebugLog(args.join(' '), 'info');
+            originalConsoleLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            addDebugLog(args.join(' '), 'error');
+            originalConsoleError.apply(console, args);
+        };
+
+        // Update status display initially
+        setTimeout(() => {
+            updateConnectionStatus(connectionStatus);
+            updateDebugPanel();
+        }, 1000);
+        
+        // Update debug panel every 5 seconds
+        setInterval(updateDebugPanel, 5000);
 
         // Demo data storage with sample tenants
         let demoTenants = JSON.parse(localStorage.getItem('demoTenants') || JSON.stringify([
@@ -626,13 +892,14 @@
                 monthlyRent: parseFloat(document.getElementById('tenantRent').value),
                 advancePaid: parseFloat(document.getElementById('tenantAdvance').value) || 0,
                 startMonth: document.getElementById('tenantStartMonth').value,
-                paymentHistory: [],
+                paymentHistory: {},
                 createdAt: new Date().toISOString()
             };
 
             try {
                 if (isFirebaseConnected) {
-                    await db.collection('tenants').add(tenantData);
+                    const newTenantRef = database.ref('tenants').push();
+                    await newTenantRef.set(tenantData);
                 } else {
                     tenantData.id = Date.now().toString();
                     demoTenants.push(tenantData);
@@ -656,11 +923,16 @@
                 let tenants = [];
                 
                 if (isFirebaseConnected) {
-                    const snapshot = await db.collection('tenants').get();
-                    tenants = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    const snapshot = await database.ref('tenants').once('value');
+                    const tenantsData = snapshot.val();
+                    if (tenantsData) {
+                        tenants = Object.keys(tenantsData).map(key => ({
+                            id: key,
+                            ...tenantsData[key],
+                            paymentHistory: tenantsData[key].paymentHistory ? 
+                                Object.values(tenantsData[key].paymentHistory) : []
+                        }));
+                    }
                 } else {
                     // Ensure demo data is properly loaded
                     tenants = demoTenants || [];
@@ -789,11 +1061,16 @@
                 let tenants = [];
                 
                 if (isFirebaseConnected) {
-                    const snapshot = await db.collection('tenants').get();
-                    tenants = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    const snapshot = await database.ref('tenants').once('value');
+                    const tenantsData = snapshot.val();
+                    if (tenantsData) {
+                        tenants = Object.keys(tenantsData).map(key => ({
+                            id: key,
+                            ...tenantsData[key],
+                            paymentHistory: tenantsData[key].paymentHistory ? 
+                                Object.values(tenantsData[key].paymentHistory) : []
+                        }));
+                    }
                 } else {
                     tenants = demoTenants;
                 }
@@ -858,8 +1135,16 @@
                 let tenant;
                 
                 if (isFirebaseConnected) {
-                    const doc = await db.collection('tenants').doc(tenantId).get();
-                    tenant = { id: doc.id, ...doc.data() };
+                    const snapshot = await database.ref(`tenants/${tenantId}`).once('value');
+                    const tenantData = snapshot.val();
+                    if (tenantData) {
+                        tenant = {
+                            id: tenantId,
+                            ...tenantData,
+                            paymentHistory: tenantData.paymentHistory ? 
+                                Object.values(tenantData.paymentHistory) : []
+                        };
+                    }
                 } else {
                     tenant = demoTenants.find(t => t.id === tenantId);
                 }
@@ -1195,9 +1480,8 @@
 
             try {
                 if (isFirebaseConnected) {
-                    await db.collection('tenants').doc(currentTenant.id).update({
-                        paymentHistory: firebase.firestore.FieldValue.arrayUnion(payment)
-                    });
+                    const paymentRef = database.ref(`tenants/${currentTenant.id}/paymentHistory`).push();
+                    await paymentRef.set(payment);
                 } else {
                     const tenantIndex = demoTenants.findIndex(t => t.id === currentTenant.id);
                     if (tenantIndex !== -1) {
@@ -1249,11 +1533,16 @@
                 let tenants = [];
                 
                 if (isFirebaseConnected) {
-                    const snapshot = await db.collection('tenants').get();
-                    tenants = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    const snapshot = await database.ref('tenants').once('value');
+                    const tenantsData = snapshot.val();
+                    if (tenantsData) {
+                        tenants = Object.keys(tenantsData).map(key => ({
+                            id: key,
+                            ...tenantsData[key],
+                            paymentHistory: tenantsData[key].paymentHistory ? 
+                                Object.values(tenantsData[key].paymentHistory) : []
+                        }));
+                    }
                 } else {
                     tenants = demoTenants;
                 }
@@ -1289,11 +1578,16 @@
                 let tenants = [];
                 
                 if (isFirebaseConnected) {
-                    const snapshot = await db.collection('tenants').get();
-                    tenants = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    const snapshot = await database.ref('tenants').once('value');
+                    const tenantsData = snapshot.val();
+                    if (tenantsData) {
+                        tenants = Object.keys(tenantsData).map(key => ({
+                            id: key,
+                            ...tenantsData[key],
+                            paymentHistory: tenantsData[key].paymentHistory ? 
+                                Object.values(tenantsData[key].paymentHistory) : []
+                        }));
+                    }
                 } else {
                     tenants = demoTenants;
                 }
@@ -1558,5 +1852,5 @@
             }
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96b7f93b308aa481',t:'MTc1NDU4MjI5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96b8160490a5a48b',t:'MTc1NDU4MzQ2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
