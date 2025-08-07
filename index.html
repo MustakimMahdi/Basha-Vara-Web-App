@@ -421,7 +421,7 @@
     </div>
 
     <script>
-        // 🔥 Firebase Configuration - সংযুক্ত এবং প্রস্তুত!
+        // 🔥 Firebase Configuration - আপনার আসল config
         const firebaseConfig = {
             apiKey: "AIzaSyBa6Gz77UfMN4X8WKAZC1a7cjjHNduEYJo",
             authDomain: "basha-vara-management.firebaseapp.com",
@@ -433,7 +433,7 @@
             measurementId: "G-SL2TYRTB74"
         };
 
-        // 🚨 গুরুত্বপূর্ণ: উপরের সব "YOUR_" দিয়ে শুরু হওয়া অংশগুলো আপনার আসল তথ্য দিয়ে পরিবর্তন করুন!
+        // ✅ Firebase config সফলভাবে সেট করা হয়েছে!
 
         // Initialize Firebase Realtime Database
         let database;
@@ -491,7 +491,12 @@
 
         // Load initial Firebase data
         async function loadFirebaseData() {
-            if (!isFirebaseConnected) return;
+            if (!isFirebaseConnected) {
+                console.log('📝 Firebase not connected, using demo data');
+                // Force refresh with demo data
+                refreshAllData();
+                return;
+            }
             
             try {
                 console.log('📥 Loading data from Firebase...');
@@ -513,20 +518,29 @@
                     demoTenants = firebaseTenants;
                     
                     // Refresh UI
-                    loadTenants();
-                    updateDashboardStats();
-                    updateMonthlyStatus();
-                    updateOutstandingList();
+                    refreshAllData();
                     
                     showNotification(`✅ ${firebaseTenants.length}টি ভাড়াটিয়ার ডেটা লোড হয়েছে!`, 'success');
                 } else {
                     console.log('📝 No data in Firebase, using demo data');
+                    refreshAllData();
                     showNotification('Firebase এ কোনো ডেটা নেই - Demo data ব্যবহার করছি', 'info');
                 }
             } catch (error) {
                 console.error('❌ Error loading Firebase data:', error);
+                refreshAllData();
                 showNotification('Firebase থেকে ডেটা লোড করতে সমস্যা হয়েছে', 'error');
             }
+        }
+
+        // Refresh all data displays
+        function refreshAllData() {
+            console.log('🔄 Refreshing all data displays...');
+            loadTenants();
+            updateDashboardStats();
+            updateMonthlyStatus();
+            updateOutstandingList();
+            console.log('✅ All data refreshed');
         }
 
         // Update connection status display
@@ -567,6 +581,17 @@
 
         // Initialize Firebase
         const firebaseInitialized = testFirebaseConnection();
+        
+        // Ensure data is loaded on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Force load data after a short delay
+            setTimeout(() => {
+                loadTenants();
+                updateDashboardStats();
+                updateMonthlyStatus();
+                updateOutstandingList();
+            }, 2000);
+        });
         
         // Debug functions
         let debugLogs = [];
@@ -754,19 +779,61 @@
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 App initializing...');
+            
             // Set today's date as default for payment date
             const paymentDateInput = document.getElementById('paymentDate');
             if (paymentDateInput) {
                 paymentDateInput.valueAsDate = new Date();
             }
             
-            // Load all data
+            // Ensure demo data is available
+            if (!demoTenants || demoTenants.length === 0) {
+                console.log('⚠️ No demo data found, loading default...');
+                demoTenants = [
+                    {
+                        id: "1",
+                        name: "রাজমিস্ত্রি সাহেব",
+                        phone: "০১৭১২৩৪৫৬৭৮",
+                        roomNumber: "১০১-১০২",
+                        monthlyRent: 2200,
+                        advancePaid: 1500,
+                        startMonth: "2024-06",
+                        paymentHistory: [
+                            {
+                                amountPaid: 2000,
+                                month: "2024-08",
+                                date: "2024-08-15",
+                                note: "আগস্ট মাসের পেমেন্ট",
+                                timestamp: "2024-08-15T10:00:00.000Z"
+                            }
+                        ],
+                        createdAt: "2024-06-01T10:00:00.000Z"
+                    },
+                    {
+                        id: "2", 
+                        name: "ব্যবসায়ী সাহেব",
+                        phone: "০১৮১২৩৪৫৬৭৮",
+                        roomNumber: "২০১",
+                        monthlyRent: 1500,
+                        advancePaid: 3000,
+                        startMonth: "2024-06",
+                        paymentHistory: [],
+                        createdAt: "2024-06-01T11:00:00.000Z"
+                    }
+                ];
+                localStorage.setItem('demoTenants', JSON.stringify(demoTenants));
+            }
+            
+            console.log('📊 Demo data available:', demoTenants);
+            
+            // Load all data immediately
             loadTenants();
             updateDashboardStats();
             populateMonthFilters();
             updateOutstandingList();
             
-            console.log('App initialized with demo data:', demoTenants);
+            console.log('✅ App initialized successfully');
             
             // Enhanced Service Worker for PWA
             if ('serviceWorker' in navigator) {
@@ -1533,6 +1600,7 @@
                 let tenants = [];
                 
                 if (isFirebaseConnected) {
+                    console.log('📊 Loading stats from Firebase...');
                     const snapshot = await database.ref('tenants').once('value');
                     const tenantsData = snapshot.val();
                     if (tenantsData) {
@@ -1542,10 +1610,16 @@
                             paymentHistory: tenantsData[key].paymentHistory ? 
                                 Object.values(tenantsData[key].paymentHistory) : []
                         }));
+                        console.log('✅ Firebase tenants loaded for stats:', tenants.length);
+                    } else {
+                        console.log('⚠️ No tenants data in Firebase');
                     }
                 } else {
-                    tenants = demoTenants;
+                    tenants = demoTenants || [];
+                    console.log('📊 Using demo data for stats:', tenants.length);
                 }
+
+                console.log('📊 Calculating stats for tenants:', tenants);
 
                 const totalTenants = tenants.length;
                 const monthlyRevenue = tenants.reduce((sum, tenant) => sum + (tenant.monthlyRent || 0), 0);
@@ -1561,15 +1635,38 @@
                     return status.status === 'paid';
                 }).length;
 
-                document.getElementById('totalTenants').textContent = totalTenants;
-                document.getElementById('monthlyRevenue').textContent = `৳${monthlyRevenue.toFixed(0)}`;
-                document.getElementById('outstandingAmount').textContent = `৳${outstandingAmount.toFixed(0)}`;
-                document.getElementById('currentMonthPaid').textContent = `${currentMonthPaid}/${totalTenants}`;
+                console.log('📊 Stats calculated:', {
+                    totalTenants,
+                    monthlyRevenue,
+                    outstandingAmount,
+                    currentMonthPaid
+                });
 
-                // Update monthly status
-                updateMonthlyStatus();
+                // Update DOM elements with null checks
+                const totalTenantsEl = document.getElementById('totalTenants');
+                const monthlyRevenueEl = document.getElementById('monthlyRevenue');
+                const outstandingAmountEl = document.getElementById('outstandingAmount');
+                const currentMonthPaidEl = document.getElementById('currentMonthPaid');
+
+                if (totalTenantsEl) totalTenantsEl.textContent = totalTenants;
+                if (monthlyRevenueEl) monthlyRevenueEl.textContent = `৳${monthlyRevenue.toFixed(0)}`;
+                if (outstandingAmountEl) outstandingAmountEl.textContent = `৳${outstandingAmount.toFixed(0)}`;
+                if (currentMonthPaidEl) currentMonthPaidEl.textContent = `${currentMonthPaid}/${totalTenants}`;
+
+                console.log('✅ Dashboard stats updated successfully');
+
             } catch (error) {
-                console.error('Error updating dashboard stats:', error);
+                console.error('❌ Error updating dashboard stats:', error);
+                // Set default values on error
+                const totalTenantsEl = document.getElementById('totalTenants');
+                const monthlyRevenueEl = document.getElementById('monthlyRevenue');
+                const outstandingAmountEl = document.getElementById('outstandingAmount');
+                const currentMonthPaidEl = document.getElementById('currentMonthPaid');
+
+                if (totalTenantsEl) totalTenantsEl.textContent = '0';
+                if (monthlyRevenueEl) monthlyRevenueEl.textContent = '৳0';
+                if (outstandingAmountEl) outstandingAmountEl.textContent = '৳0';
+                if (currentMonthPaidEl) currentMonthPaidEl.textContent = '0/0';
             }
         }
 
@@ -1852,5 +1949,5 @@
             }
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96b8160490a5a48b',t:'MTc1NDU4MzQ2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96b83916f001a475',t:'MTc1NDU4NDkwMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
